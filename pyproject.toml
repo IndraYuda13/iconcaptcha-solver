@@ -1,0 +1,21 @@
+[project]
+name = "iconcaptcha-solver"
+version = "0.1.0"
+description = "Reusable IconCaptcha least-repeated-icon solver"
+requires-python = ">=3.11"
+dependencies = [
+  "Pillow>=10.0.0",
+]
+
+[project.scripts]
+iconcaptcha-solver = "iconcaptcha_solver.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
