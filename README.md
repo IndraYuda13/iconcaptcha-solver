@@ -6,7 +6,7 @@ Reusable Python solver for IconCaptcha strips where the task is to click the ico
 - accepts a canvas data URL from a live IconCaptcha widget
 - splits the strip into equal horizontal cells
 - normalizes the image
-- groups visually identical cells with mean absolute pixel distance
+- groups visually identical cells with shift-aware mean absolute pixel distance so small left/right offsets do not look like different icons
 - returns the least-repeated cell plus click coordinates
 
 ## Why this exists
@@ -48,4 +48,14 @@ The solver returns:
 
 ## Notes
 - Default assumption is a 5-cell horizontal strip because that is the live ClaimCoin withdraw shape that was proven.
-- If a target uses a different equal-width cell count, pass `cell_count=`.
+- The default similarity threshold is tuned for the shift-aware matcher. If a target uses a different equal-width cell count, pass `cell_count=`.
+
+## Live fixture benchmark
+Captured live fixtures can be benchmarked before changing solver thresholds:
+
+```bash
+PYTHONPATH=src python3 scripts/benchmark_fixtures.py fixtures/autodime/live/labels.jsonl \
+  --thresholds 8,12,16,20,24,28
+```
+
+Current `fixtures/autodime/live` contains the first proven xut/autodime Step 1 pass sample. Treat it as a smoke fixture, not a real 90%+ corpus yet. The next target is 100+ live passed challenges before claiming a stable win rate.

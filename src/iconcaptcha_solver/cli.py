@@ -11,7 +11,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="iconcaptcha-solver")
     parser.add_argument("input")
     parser.add_argument("--cell-count", type=int, default=5)
-    parser.add_argument("--similarity-threshold", type=float, default=5.0)
+    parser.add_argument("--similarity-threshold", type=float, default=20.0)
     args = parser.parse_args()
 
     raw = args.input

@@ -31,7 +31,7 @@ def solve_iconcaptcha_data_url(
     canvas_data_url: str,
     *,
     cell_count: int = 5,
-    similarity_threshold: float = 5.0,
+    similarity_threshold: float = 20.0,
 ) -> IconCaptchaSolveResult:
     if not canvas_data_url or "," not in canvas_data_url:
         raise ValueError("iconcaptcha canvas data URL is empty")
@@ -51,7 +51,7 @@ def solve_iconcaptcha_png_bytes(
     png_bytes: bytes,
     *,
     cell_count: int = 5,
-    similarity_threshold: float = 5.0,
+    similarity_threshold: float = 20.0,
 ) -> IconCaptchaSolveResult:
     if cell_count < 2:
         raise ValueError("cell_count must be at least 2")
@@ -119,9 +119,44 @@ def _build_pairwise_mad(cell_vectors: list[list[int]]) -> list[list[float]]:
     for left in cell_vectors:
         row: list[float] = []
         for right in cell_vectors:
-            row.append(sum(abs(a - b) for a, b in zip(left, right)) / len(left))
+            row.append(_shift_aware_mad(left, right))
         matrix.append(row)
     return matrix
+
+
+def _shift_aware_mad(left: list[int], right: list[int], *, image_size: int = 32, max_shift: int = 10) -> float:
+    if len(left) != len(right):
+        raise ValueError("cell vectors must be the same size")
+    if image_size * image_size != len(left):
+        raise ValueError("cell vectors must represent a square image")
+    forward = _directed_shift_mad(left, right, image_size=image_size, max_shift=max_shift)
+    backward = _directed_shift_mad(right, left, image_size=image_size, max_shift=max_shift)
+    return (forward + backward) / 2
+
+
+def _directed_shift_mad(source: list[int], target: list[int], *, image_size: int, max_shift: int) -> float:
+    best = float("inf")
+    for dx in range(-max_shift, max_shift + 1):
+        for dy in range(-max_shift, max_shift + 1):
+            shifted = _shift_vector(target, dx, dy, image_size=image_size)
+            value = sum(abs(a - b) for a, b in zip(source, shifted)) / len(source)
+            if value < best:
+                best = value
+    return best
+
+
+def _shift_vector(vector: list[int], dx: int, dy: int, *, image_size: int, fill: int = 255) -> list[int]:
+    shifted = [fill] * len(vector)
+    for y in range(image_size):
+        src_y = y - dy
+        if src_y < 0 or src_y >= image_size:
+            continue
+        for x in range(image_size):
+            src_x = x - dx
+            if src_x < 0 or src_x >= image_size:
+                continue
+            shifted[y * image_size + x] = vector[src_y * image_size + src_x]
+    return shifted
 
 
 def _group_cells(pairwise: list[list[float]], threshold: float) -> list[list[int]]:

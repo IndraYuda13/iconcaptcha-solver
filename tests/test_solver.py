@@ -10,15 +10,19 @@ from iconcaptcha_solver.solver import solve_iconcaptcha_data_url
 
 
 class SolverTests(unittest.TestCase):
-    def _build_canvas(self, labels: list[str]) -> str:
+    def _build_canvas(self, labels: list[str | tuple[str, int]]) -> str:
         width = 320
         height = 50
         cell_width = width // len(labels)
         image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
-        for index, label in enumerate(labels):
-            left = index * cell_width + 10
-            right = (index + 1) * cell_width - 10
+        for index, item in enumerate(labels):
+            if isinstance(item, tuple):
+                label, offset_x = item
+            else:
+                label, offset_x = item, 0
+            left = index * cell_width + 10 + offset_x
+            right = (index + 1) * cell_width - 10 + offset_x
             top = 8
             bottom = height - 8
             if label == "square":
@@ -44,6 +48,32 @@ class SolverTests(unittest.TestCase):
         result = solve_iconcaptcha_data_url(self._build_canvas(["square", "circle", "circle", "triangle", "triangle"]))
         self.assertEqual(result.selected_cell_number, 1)
         self.assertEqual(sorted(len(group) for group in result.groups), [1, 2, 2])
+
+    def test_shifted_duplicates_still_group_for_four_same_one_unique(self) -> None:
+        result = solve_iconcaptcha_data_url(
+            self._build_canvas([
+                ("circle", -12),
+                ("square", 0),
+                ("square", 8),
+                ("square", 12),
+                ("square", -6),
+            ])
+        )
+        self.assertEqual(result.selected_cell_number, 1)
+        self.assertEqual(sorted(len(group) for group in result.groups), [1, 4])
+
+    def test_shifted_duplicates_still_group_for_three_vs_two(self) -> None:
+        result = solve_iconcaptcha_data_url(
+            self._build_canvas([
+                ("square", -10),
+                ("square", 0),
+                ("square", 10),
+                ("triangle", 0),
+                ("triangle", 10),
+            ])
+        )
+        self.assertEqual(result.selected_cell_number, 4)
+        self.assertEqual(sorted(len(group) for group in result.groups), [2, 3])
 
 
 if __name__ == "__main__":
