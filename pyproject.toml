@@ -5,10 +5,13 @@ description = "Reusable IconCaptcha least-repeated-icon solver"
 requires-python = ">=3.11"
 dependencies = [
   "Pillow>=10.0.0",
+  "fastapi>=0.110.0",
+  "uvicorn>=0.27.0",
 ]
 
 [project.scripts]
 iconcaptcha-solver = "iconcaptcha_solver.cli:main"
+iconcaptcha-solver-api = "iconcaptcha_solver.api:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
