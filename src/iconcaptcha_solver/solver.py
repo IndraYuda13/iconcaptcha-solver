@@ -32,6 +32,8 @@ def solve_iconcaptcha_data_url(
     *,
     cell_count: int = 5,
     similarity_threshold: float = 20.0,
+    max_shift: int = 10,
+    background_rgb: tuple[int, int, int] = (255, 255, 255),
 ) -> IconCaptchaSolveResult:
     if not canvas_data_url or "," not in canvas_data_url:
         raise ValueError("iconcaptcha canvas data URL is empty")
@@ -44,6 +46,8 @@ def solve_iconcaptcha_data_url(
         png_bytes,
         cell_count=cell_count,
         similarity_threshold=similarity_threshold,
+        max_shift=max_shift,
+        background_rgb=background_rgb,
     )
 
 
@@ -52,12 +56,14 @@ def solve_iconcaptcha_png_bytes(
     *,
     cell_count: int = 5,
     similarity_threshold: float = 20.0,
+    max_shift: int = 10,
+    background_rgb: tuple[int, int, int] = (255, 255, 255),
 ) -> IconCaptchaSolveResult:
     if cell_count < 2:
         raise ValueError("cell_count must be at least 2")
 
     image = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
-    normalized = _normalize_canvas(image)
+    normalized = _normalize_canvas(image, background_rgb=background_rgb)
     width, height = normalized.size
     cell_width = width // cell_count
     if cell_width < 1:
@@ -72,7 +78,7 @@ def solve_iconcaptcha_png_bytes(
         cell = cell.resize((32, 32))
         cell_vectors.append(list(cell.getdata()))
 
-    pairwise = _build_pairwise_mad(cell_vectors)
+    pairwise = _build_pairwise_mad(cell_vectors, max_shift=max_shift)
     groups = _group_cells(pairwise, similarity_threshold)
     distinctness = [round(mean([value for j, value in enumerate(row) if j != i]), 4) for i, row in enumerate(pairwise)]
 
@@ -101,8 +107,8 @@ def solve_iconcaptcha_png_bytes(
     )
 
 
-def _normalize_canvas(image: Image.Image) -> Image.Image:
-    background = Image.new("RGBA", image.size, (255, 255, 255, 255))
+def _normalize_canvas(image: Image.Image, *, background_rgb: tuple[int, int, int]) -> Image.Image:
+    background = Image.new("RGBA", image.size, (*background_rgb, 255))
     background.alpha_composite(image)
     gray = ImageOps.grayscale(background)
     return ImageOps.autocontrast(gray)
@@ -114,12 +120,12 @@ def _trim_cell(image: Image.Image) -> Image.Image:
     return image.crop((2, 2, image.width - 2, image.height - 2))
 
 
-def _build_pairwise_mad(cell_vectors: list[list[int]]) -> list[list[float]]:
+def _build_pairwise_mad(cell_vectors: list[list[int]], *, max_shift: int) -> list[list[float]]:
     matrix: list[list[float]] = []
     for left in cell_vectors:
         row: list[float] = []
         for right in cell_vectors:
-            row.append(_shift_aware_mad(left, right))
+            row.append(_shift_aware_mad(left, right, max_shift=max_shift))
         matrix.append(row)
     return matrix
 
